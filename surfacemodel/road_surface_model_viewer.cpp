@@ -844,13 +844,15 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    auto downsampled = voxelDownsample(points, VOXEL_SIZE_MM);
+  
 
     // Remove bottom 20% first to avoid the hood contaminating plane fitting.
-    auto noBottom = removeBottomPercentOfCloud(downsampled);
+    auto noBottom = removeBottomPercentOfCloud(points);
+
+    auto downsampled = voxelDownsample(noBottom, VOXEL_SIZE_MM);
 
     // Then do the regular percentile crop.
-    auto cropped = cropPercentile(noBottom);
+    auto cropped = cropPercentile(downsampled);
 
     Eigen::Vector3d normal;
     Eigen::Vector3d plane_center;

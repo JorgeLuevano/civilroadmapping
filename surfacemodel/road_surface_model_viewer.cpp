@@ -1,9 +1,21 @@
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-#include <GL/glu.h>
-#include <GL/freeglut.h>
+// Road Surface Model Viewer
+// This tool loads a point cloud of a road surface, fits a plane to it using RANSAC,
+// levels the points, builds a gridded height map, and renders it in OpenGL.
+// Usage:
+//   1. Build with: g++ road_surface_model_viewer.cpp -o viewer -lGL -lGLEW -lglfw -lGLU -lglut -I /path/to/eigen
+//   2. Run with: ./viewer path/to/pointcloud.ply
+// The output surface mesh is saved as "surface_mesh.ply" and can be viewed in MeshLab or similar tools.
+// Jorge Gregory Luevano - 2024-05
 
-#include <Eigen/Dense>
+
+
+
+#include <GL/glew.h> // For modern OpenGL function loading
+#include <GLFW/glfw3.h> // For windowing and input
+#include <GL/glu.h> // For gluPerspective and other utilities
+#include <GL/freeglut.h> // For bitmap text rendering
+
+#include <Eigen/Dense> // For linear algebra and plane fitting
 
 #include <algorithm>
 #include <cmath>
@@ -23,7 +35,7 @@ static const double VOXEL_SIZE_MM = 20.0;       // downsample size
 static const double PLANE_THRESH_MM = 25.0;     // RANSAC plane threshold
 static const int    RANSAC_ITERS = 1200;
 
-static const double GRID_RES_MM = 30.0;         // surface model grid resolution
+static const double GRID_RES_MM = 10.0;         // surface model grid resolution
 static const int    SMOOTH_ITERS = 7;           // surface smoothing passes
 static const double HEIGHT_EXAGGERATION = 3.0;  // makes small road changes visible
 
@@ -72,7 +84,7 @@ struct VoxelKey {
     bool operator==(const VoxelKey& other) const {
         return x == other.x && y == other.y && z == other.z;
     }
-};
+}; // For use in unordered_map, so we can aggregate points into voxels for downsampling.
 
 struct VoxelHash {
     std::size_t operator()(const VoxelKey& k) const {
@@ -81,7 +93,7 @@ struct VoxelHash {
         std::size_t h3 = std::hash<int>()(k.z);
         return h1 ^ (h2 << 1) ^ (h3 << 2);
     }
-};
+}; // Hash function for VoxelKey to use in unordered_map.
 
 struct Accum {
     double x = 0, y = 0, z = 0;
@@ -100,7 +112,7 @@ double percentile(std::vector<double> values, double pct) {
 
     std::nth_element(values.begin(), values.begin() + idx, values.end());
     return values[idx];
-}
+} // Get the value at the given percentile in the vector.
 
 std::vector<double> collectAxis(const std::vector<Point3D>& pts, int axis) {
     std::vector<double> vals;
@@ -113,11 +125,11 @@ std::vector<double> collectAxis(const std::vector<Point3D>& pts, int axis) {
     }
 
     return vals;
-}
+} // Collect values along a specific axis (0 = x, 1 = y, 2 = z) from the point cloud.
 
 Eigen::Vector3d toEigen(const Point3D& p) {
     return Eigen::Vector3d(p.x, p.y, p.z);
-}
+} // Convert Point3D to Eigen::Vector3d for linear algebra operations.
 
 static std::string trimLine(std::string s) {
     while (!s.empty() &&
@@ -133,13 +145,13 @@ static std::string trimLine(std::string s) {
     }
 
     return s.substr(start);
-}
+} // Trim whitespace and carriage returns from a line read from the PLY file.
 
 double getAxisValue(const Point3D& p, int axis) {
     if (axis == 0) return p.x;
     if (axis == 1) return p.y;
     return p.z;
-}
+} // Get the value of a specific axis from a Point3D (0 = x, 1 = y, 2 = z).
 
 // ------------------------------------------------------------
 // Robust ASCII PLY reader
@@ -206,11 +218,11 @@ bool readAsciiPly(const std::string& path, std::vector<Point3D>& points) {
         p.b = static_cast<unsigned char>(std::clamp(vals[i * 6 + 5], 0.0, 255.0));
 
         points.push_back(p);
-    }
+    } // If there were more values than expected, we just ignore the extras.
 
     std::cout << "Loaded points: " << points.size() << std::endl;
     return true;
-}
+} 
 
 // ------------------------------------------------------------
 // Voxel downsample

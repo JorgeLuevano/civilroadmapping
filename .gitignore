@@ -1,0 +1,21 @@
+cat > .gitignore << 'EOF'
+# Python virtual environments
+civil/
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Large data files
+*.ply
+*.bag
+*.mp4
+
+# Generated outputs
+results/
+*.npy
+*.csv
+EOF
